@@ -81,7 +81,7 @@ public class Main {
         new Fish(45, "Puffer Fish", 3),
         new Fish(46, "Horse Mackerel", 2),
         new Fish(47, "Barred Knifejaw", 3),
-        new Fish(48, "Sea Bass", 6),
+        new Fish(48, "Sea Bass", 5),
         new Fish(49, "Red Snapper", 3),
         new Fish(50, "Dab", 3),
         new Fish(51, "Olive Flounder", 4),
@@ -125,7 +125,7 @@ public class Main {
         * November - 804ed138       4E9218
         * December - 804ed208       4E92E8
         * 
-        * Fish - each address is the start of the memory region containing the fish spawn data, per month:
+        * Fish (River) - each address is the start of the memory region containing the fish spawn data, per month:
         * 
         * January - 804e4c88                4E0D68
         * February - 804e4d14               4E0DF4
@@ -141,6 +141,24 @@ public class Main {
         * October - 804e53e0                4E14C0
         * November - 804e547c               4E155C
         * December - 804e5518               4E15F8
+        * 
+        * end: 4E1685
+        * 
+        * Fish (Ocean)
+        * January - 804e55a8                4E1688
+        * February - 804e5630               4E1710
+        * March - 804e56ac                  4E178C
+        * April - 804e5728                  4E1808
+        * May - 804e57c8                    4E18A8   
+        * June - 804e5858                   4E1938
+        * July - 804e5900                   4E19E0
+        * August (1 - 14) - 804e59bc        4E1A9C
+        * August (15 - 31) - 804e5a7c       4E1B5C
+        * September (1 - 14) - 804e5b3c     4E1C1C
+        * September (15 - 30) - 804e5c00    4E1CE0
+        * October - 804e5cbc                4E1D9C
+        * November - 804e5d44               4E1E24
+        * December - 804e5dd8               4E1EB8
     */
 
     static MonthPair[] bugAddrs = new MonthPair[]{new MonthPair("January", "4e8638"), new MonthPair("February", "4E86A0"),
@@ -149,16 +167,27 @@ public class Main {
         new MonthPair("September", "4E8F88"), new MonthPair("October", "4E9130"),
         new MonthPair("November", "4E9218"), new MonthPair("December", "4E92E8")};
     
-    static MonthPair[] fishAddrs = new MonthPair[]{new MonthPair("January", "4E0D68"), new MonthPair("February", "4E0DF4"),
+    static MonthPair[] fishRiverAddrs = new MonthPair[]{new MonthPair("January", "4E0D68"), new MonthPair("February", "4E0DF4"),
         new MonthPair("March", "4E0E80"), new MonthPair("April", "4E0F00"), new MonthPair("May", "4E0F94"),
         new MonthPair("June", "4E1038"), new MonthPair("July", "4E10F8"), new MonthPair("August (1 - 14)", "4E11BC"),
         new MonthPair("August (15 - 31)", "4E1280"), new MonthPair("September (1 - 14)", "4E1348"),
         new MonthPair("September (15 - 30)", "4E140C"), new MonthPair("October", "4E14C0"),
         new MonthPair("November", "4E155C"), new MonthPair("December", "4E15F8")};
     
-    static String[] fishAcreIds = new String[] {"River", "Lake", "Waterfall", "Pond", "Ocean", "Ocean w/rain"};
+    static MonthPair[] fishOceanAddrs = new MonthPair[]{new MonthPair("January", "4E1688"), new MonthPair("February", "4E1710"),
+        new MonthPair("March", "4E178C"), new MonthPair("April", "4E1808"), new MonthPair("May", "4E18A8"),
+        new MonthPair("June", "4E1938"), new MonthPair("July", "4E19E0"), new MonthPair("August (1 - 14)", "4E1A9C"),
+        new MonthPair("August (15 - 31)", "4E1B5C"), new MonthPair("September (1 - 14)", "4E1C1C"),
+        new MonthPair("September (15 - 30)", "4E1CE0"), new MonthPair("October", "4E1D9C"),
+        new MonthPair("November", "4E1E24"), new MonthPair("December", "4E1EB8")};
     
-    static Map<Integer, Map<Integer, List<FishSpawnWeight>>> spawnWeightMap = new HashMap<>();
+    final static String riverFishEndAddr = "4E1685";
+    final static String oceanFishEndAddr = "4E1F3D";
+    
+    static String[] fishAcreIds = new String[] {"River", "Lake", "Waterfall", "Pond", "River Mouth", "Ocean (rain/snow)", "Ocean"};
+    
+    static Map<Integer, Map<Integer, List<FishSpawnWeight>>> riverFishSpawnWeightMap = new HashMap<>();
+    static Map<Integer, Map<Integer, List<FishSpawnWeight>>> oceanFishSpawnWeightMap = new HashMap<>();
 
     public static void main(String[] args) {
         
@@ -174,13 +203,17 @@ public class Main {
         }
         
         // lol
-        boolean parseBugs = false;
-        String result = parseBugs ? parseBugData(dolPathStr) : parseFishData(dolPathStr);
-//        System.out.println(result);
+//        boolean parseBugs = false;
+//        String result = parseBugData(dolPathStr);
+
+        boolean isOcean = true;
+
+        String result = parseFishData(dolPathStr, isOcean);
+        System.out.println(result);
         
         // process all of the fish spawn weights
-        String percentages = processFishSpawnWeights();
-        System.out.println(percentages);
+//        String percentages = processRiverFishSpawnWeights();
+//        System.out.println(percentages);
     }
     
     private static String parseBugData(String dolPathStr){
@@ -262,9 +295,12 @@ public class Main {
         return result.toString();
     }
     
-    private static String parseFishData(String dolPathStr){
+    private static String parseFishData(String dolPathStr, boolean isOcean){
         
         StringBuilder result = new StringBuilder();
+        
+        String endAddr = (isOcean ? oceanFishEndAddr : riverFishEndAddr);
+        MonthPair[] fishAddrs = (isOcean ? fishOceanAddrs : fishRiverAddrs);
         
         // parse main.dol!
         try{
@@ -306,7 +342,7 @@ public class Main {
                 int j = -1;
                 
                 int startOffset = Integer.parseInt(String.valueOf(m.getAddress()), 16);
-                int endOffset = (monthId < 13) ? Integer.parseInt(fishAddrs[monthId+1].getAddress(), 16) : Integer.parseInt("4E1685", 16);
+                int endOffset = (monthId < 13) ? Integer.parseInt(fishAddrs[monthId+1].getAddress(), 16) : Integer.parseInt(endAddr, 16);
 //                System.out.println("startOffset " + startOffset);
                 
                 while(startOffset < endOffset){
@@ -327,13 +363,16 @@ public class Main {
                     // the fish data is not perfectly lined up, presumably because each fish takes up 3 bytes and not 4?
                     // so sometimes there is an extra blank byte at the end of a data segment...
                     // if the spawn weight is 0, increase the starting byte by 1 and try again.
-                    if(upperSpawnRange <= 0){
+                    if(upperSpawnRange <= 0 || acreId > 6){
                         startOffset++;
                         continue;
                     } 
                     
                     // sometimes there are 2 padding bytes...
-                    else if(fishId == 0 && acreId == 0 && upperSpawnRange < 10){
+                    // for river, < 10 checks for something (?)
+                    // for ocean, >= 27 checks if the offset ID is at least Salmon
+                    else if((!isOcean && fishId == 0 && acreId == 0 && upperSpawnRange < 10) 
+                            || (isOcean && fishId == 0 && acreId == 0 && upperSpawnRange >= 27)){
                         startOffset += 2;
                         continue;
                     }
@@ -366,7 +405,7 @@ public class Main {
                     
                     if(spawnWeight != 0){
                         sb.append(String.format("%1$18s", fishName)).append("\t").append(spawnWeight);
-                        if(acreId != 0){
+                        if(( !isOcean && acreId != 0) || (isOcean && acreId != 6)){
                             sb.append("\t").append(fishAcreIds[acreId]);
                         }
                         sb.append("\n");
@@ -381,28 +420,42 @@ public class Main {
                 result.append(sb);
                 
                 // add the spawn weight map for this month to the master map
-                spawnWeightMap.put(monthId, monthlySpawnWeightsMap);
+                if(isOcean){
+                    oceanFishSpawnWeightMap.put(monthId, monthlySpawnWeightsMap);
+                } else{
+                    riverFishSpawnWeightMap.put(monthId, monthlySpawnWeightsMap);
+                }
 
                 monthId++;
+            }
+            
+//            System.out.println(result);
+            
+            if(isOcean){
+                return processOceanFishSpawnWeights();
+            } else{
+                return processRiverFishSpawnWeights();
             }
             
         } catch(Exception ex){
             System.out.println("Exception " + ex);
             ex.printStackTrace();
+            
+            return result.toString();
         }
         
-        return result.toString();
+        
     }
     
-    private static String processFishSpawnWeights(){
+    private static String processRiverFishSpawnWeights(){
         
         StringBuilder sb = new StringBuilder();
         
         for(int monthId = 0; monthId < 14; monthId++){
             
-            sb.append("\n").append(fishAddrs[monthId].getMonth()).append(":\n");
+            sb.append("\n").append(fishRiverAddrs[monthId].getMonth()).append(":\n");
             
-            Map<Integer, List<FishSpawnWeight>> monthMap = spawnWeightMap.get(monthId);
+            Map<Integer, List<FishSpawnWeight>> monthMap = riverFishSpawnWeightMap.get(monthId);
             
             for(int timeOfDayId = 0; timeOfDayId < 3; timeOfDayId++){
                 
@@ -431,7 +484,6 @@ public class Main {
                 double LLLakeSpawnWeight = 0;
                 double LLLRiverSpawnWeight = 0;
                 double LLLLakeSpawnWeight = 0;
-                double finSpawnWeight = 0;
                 
                 for(FishSpawnWeight fsw: weights){
                     int w = fsw.getSpawnWeight();
@@ -514,11 +566,6 @@ public class Main {
                                 LLLLakeSpawnWeight += w;
                             }
                             break;
-                            
-                        // Sharks (finned)
-                        case 7:
-                            finSpawnWeight += w;
-                            break;
                     }
                 }
                 
@@ -589,11 +636,6 @@ public class Main {
                             }
                             break;
                             
-                        // Sharks (finned)
-                        case 7:
-                            totalWeightToUse = finSpawnWeight;
-                            break;
-                            
                         // Eel (lol)
                         case 8:
                             totalWeightToUse = fsw.getSpawnWeight();
@@ -604,6 +646,174 @@ public class Main {
                             
                     if(fsw.getAcreId() != 0){
                         sb.append("\t").append(fishAcreIds[fsw.getAcreId()]);
+                    }
+                    sb.append("\n");
+                }
+            }
+        }
+        
+        return sb.toString();
+    }
+    
+    private static String processOceanFishSpawnWeights(){
+        
+        StringBuilder sb = new StringBuilder();
+        
+        for(int monthId = 0; monthId < 14; monthId++){
+            
+            sb.append("\n").append(fishOceanAddrs[monthId].getMonth()).append(":\n");
+            
+            Map<Integer, List<FishSpawnWeight>> monthMap = oceanFishSpawnWeightMap.get(monthId);
+            
+            for(int timeOfDayId = 0; timeOfDayId < 3; timeOfDayId++){
+                
+                sb.append("\n").append(String.format("%-20s", fishTimes[timeOfDayId]))
+                        .append("\tBase %\t\tShadow Based %\n");                
+                
+                ArrayList<FishSpawnWeight> weights = (ArrayList) monthMap.get(timeOfDayId);
+                
+                // first, get the total spawn weights
+                double totalOceanSpawnWeight = 0;
+                double oceanSpawnWeight = 0;
+                double riverMouthSpawnWeight = 0;
+                
+                // also the shadow-based spawn weights
+                double SSSpawnWeight = 0;
+                double SSpawnWeight = 0;
+                double MSpawnWeight = 0;
+                double LOceanSpawnWeight = 0;
+                double LRiverMouthSpawnWeight = 0;
+                double LLSpawnWeight = 0;
+                double LLLOceanSpawnWeight = 0;
+                double LLLRiverMouthSpawnWeight = 0;
+                double finSpawnWeight = 0;
+                
+                for(FishSpawnWeight fsw: weights){
+                    int w = fsw.getSpawnWeight();
+//                    System.out.println("weight " + w + " for fish ID " + fsw.getFishId());
+                    
+                    switch(fsw.getAcreId()){
+                        
+                        // River Mouth
+                        case 4:
+                            riverMouthSpawnWeight += w;
+                            break;
+                        
+                        // Ocean
+                        case 6:
+                            oceanSpawnWeight += w;
+                            break;
+                    }
+                    
+                    switch(fish[fsw.getFishId()].getSize()){
+                        // Tiny (SS)
+                        case 1:
+                            SSSpawnWeight += w;
+                            break;
+                            
+                        // Small (S)
+                        case 2:
+                            SSpawnWeight += w;
+                            break;
+                            
+                        // Medium (M)
+                        case 3:
+                            MSpawnWeight += w;
+                            break;
+                            
+                        // Large (L)
+                        case 4:
+                            if(fsw.getAcreId() == 4){
+                                LRiverMouthSpawnWeight += w;
+                            } else{
+                                LOceanSpawnWeight += w;
+                            }
+                            break;
+                            
+                        // Extra Large (LL)
+                        case 5:
+                            LLSpawnWeight += w;
+                            break;
+                            
+                        // Huge (LLL)
+                        case 6:
+                            if(fsw.getAcreId() == 4){
+                                LLLRiverMouthSpawnWeight += w;
+                            } else{
+                                LLLOceanSpawnWeight += w;
+                            }
+                            break;
+                            
+                        // Sharks (finned)
+                        case 7:
+                            finSpawnWeight += w;
+                            break;
+                    }
+                }
+                
+                // combine the spawn weights
+                totalOceanSpawnWeight = oceanSpawnWeight + riverMouthSpawnWeight;
+                
+                // then, calculate the percentage for each individual fish
+                for(FishSpawnWeight fsw: weights){
+                    sb.append(String.format("%1$20s", fish[fsw.getFishId()].getName())).append("\t")
+                            .append(String.format("%.1f", (100.0 * (fsw.getSpawnWeight() / totalOceanSpawnWeight))));
+//                            .append("%");
+                    
+                    // handle the shadow-based %
+                    double totalWeightToUse = 0;
+                    
+                    switch(fish[fsw.getFishId()].getSize()){
+                        // Tiny (SS)
+                        case 1:
+                            totalWeightToUse = SSSpawnWeight;
+                            break;
+                            
+                        // Small (S)
+                        case 2:
+                            totalWeightToUse = SSpawnWeight;
+                            break;
+                            
+                        // Medium (M)
+                        case 3:
+                            totalWeightToUse = MSpawnWeight;
+                            break;
+                            
+                        // Large (L)
+                        case 4:
+                            if(fsw.getAcreId() == 4){
+                                totalWeightToUse = LRiverMouthSpawnWeight + LOceanSpawnWeight;
+                            } else{
+                                totalWeightToUse = LOceanSpawnWeight;
+                            }
+                            break;
+                            
+                        // Extra Large (LL)
+                        case 5:
+                            totalWeightToUse = LLSpawnWeight;
+                            break;
+                            
+                        // Huge (LLL)
+                        case 6:
+                            if(fsw.getAcreId() == 4){
+                                totalWeightToUse = LLLRiverMouthSpawnWeight + LLLOceanSpawnWeight;
+                            } else{
+                                totalWeightToUse = LLLOceanSpawnWeight;
+                            }
+                            break;
+                            
+                        // Sharks (finned)
+                        case 7:
+                            totalWeightToUse = finSpawnWeight;
+                            break;
+                    }
+                    
+                    sb.append("\t\t").append(String.format("%.1f", (100.0 * (fsw.getSpawnWeight() / totalWeightToUse))));
+                            
+                    if(fsw.getAcreId() == 4){
+                        sb.append("\t").append(fishAcreIds[fsw.getAcreId()]);
+                    } else if(fsw.getAcreId() == 5){
+                        sb.append("\t").append("Rain/Snow");
                     }
                     sb.append("\n");
                 }
