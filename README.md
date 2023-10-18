@@ -7,4 +7,4 @@ Bug Spawn Weights: https://pastebin.com/YFK5tm4i
 
 Fish (River) Spawn Percentages: https://pastebin.com/y6cSELpY
 
-Fish (Ocean) Spawn Percentages
+Fish (Ocean) Spawn Percentages: https://pastebin.com/4WUGsPih
