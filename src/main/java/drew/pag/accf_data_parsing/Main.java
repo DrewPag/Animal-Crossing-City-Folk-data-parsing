@@ -75,7 +75,7 @@ public class Main {
         new Fish(39, "Seahorse", 1), 
         new Fish(40, "Clownfish", 1), 
         new Fish(41, "Surgeonfish", 2), 
-        new Fish(42, "Butterflyfish", 3),
+        new Fish(42, "Butterflyfish", 2),
         new Fish(43, "Napoleonfish", 6), 
         new Fish(44, "Zebra Turkeyfish", 3), 
         new Fish(45, "Puffer Fish", 3),
