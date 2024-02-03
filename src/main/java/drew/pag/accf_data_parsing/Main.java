@@ -4,6 +4,7 @@ import drew.pag.accf_data_parsing.fish.Fish;
 import drew.pag.accf_data_parsing.fish.FishSpawnWeight;
 import drew.pag.accf_data_parsing.ui.LoadDolDialog;
 import java.io.IOException;
+import java.io.PrintWriter;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.file.Files;
@@ -14,6 +15,8 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  *
@@ -188,8 +191,29 @@ public class Main {
     
     static Map<Integer, Map<Integer, List<FishSpawnWeight>>> riverFishSpawnWeightMap = new HashMap<>();
     static Map<Integer, Map<Integer, List<FishSpawnWeight>>> oceanFishSpawnWeightMap = new HashMap<>();
+    
+    static Double[][] fishSpawnWeightArray = new Double[68][42];
+    static Double[][] fishShadowBasedArray = new Double[68][42];
+    static Double[][] bugBasePercentagesArray = new Double[64][72];
+    
+    static String fishPercentagesCsv = "C:/Users/drewp/Desktop/cf_fish_percentages.csv";
+    static String fishShadowPercentagesCsv = "C:/Users/drewp/Desktop/cf_fish_shadow_percentages.csv";
+    static String bugPercentagesCsv = "C:/Users/drewp/Desktop/cf_bug_percentages.csv";
 
     public static void main(String[] args) {
+        
+        for(int i=0; i < 68; i++){
+            for(int j = 0; j < 42; j++){
+                fishSpawnWeightArray[i][j] = 0.0;
+                fishShadowBasedArray[i][j] = 0.0;
+            }
+        }
+        
+        for(int i=0; i < 64; i++){
+            for(int j = 0; j < 72; j++){
+                bugBasePercentagesArray[i][j] = 0.0;
+            }
+        }
         
         // display the pane, and get the file path + options (?) back
 //        String dolPathStr = LoadDolDialog.display();
@@ -203,17 +227,23 @@ public class Main {
         }
         
         // lol
-//        boolean parseBugs = false;
-//        String result = parseBugData(dolPathStr);
+        boolean parseBugs = false;
+        String result = parseBugData(dolPathStr);
 
         boolean isOcean = true;
 
-        String result = parseFishData(dolPathStr, isOcean);
-        System.out.println(result);
+        result = parseFishData(dolPathStr, !isOcean);
+        result = parseFishData(dolPathStr, isOcean);
+//        System.out.println(result);
         
         // process all of the fish spawn weights
-//        String percentages = processRiverFishSpawnWeights();
-//        System.out.println(percentages);
+        String riverSpawnWeights = processRiverFishSpawnWeights();
+        String oceanSpawnWeights = processOceanFishSpawnWeights();
+//        System.out.println(riverSpawnWeights);
+//        System.out.println(oceanSpawnWeights);
+        
+        writeFishToCsv();
+        writeBugsToCsv();
     }
     
     private static String parseBugData(String dolPathStr){
@@ -642,12 +672,20 @@ public class Main {
                             break;
                     }
                     
-                    sb.append("\t\t").append(String.format("%.1f", (100.0 * (fsw.getSpawnWeight() / totalWeightToUse))));
+                    double shadowBasedPercent = 100.0 * (fsw.getSpawnWeight() / totalWeightToUse);
+                    
+                    sb.append("\t\t").append(String.format("%.1f", shadowBasedPercent));
                             
                     if(fsw.getAcreId() != 0){
                         sb.append("\t").append(fishAcreIds[fsw.getAcreId()]);
                     }
                     sb.append("\n");
+                    
+                    // add the fish spawn weight and shadow based % to the appropriate entry in the 2d arrays
+                    int colIndex = (monthId * 3) + timeOfDayId;
+                    
+                    fishSpawnWeightArray[fsw.getFishId()][colIndex] = 1.0*fsw.getSpawnWeight();
+                    fishShadowBasedArray[fsw.getFishId()][colIndex] = shadowBasedPercent;
                 }
             }
         }
@@ -675,6 +713,7 @@ public class Main {
                 // first, get the total spawn weights
                 double totalOceanSpawnWeight = 0;
                 double oceanSpawnWeight = 0;
+                double oceanRainSpawnWeight = 0;
                 double riverMouthSpawnWeight = 0;
                 
                 // also the shadow-based spawn weights
@@ -685,6 +724,7 @@ public class Main {
                 double LRiverMouthSpawnWeight = 0;
                 double LLSpawnWeight = 0;
                 double LLLOceanSpawnWeight = 0;
+                double LLLOceanRainSpawnWeight = 0;
                 double LLLRiverMouthSpawnWeight = 0;
                 double finSpawnWeight = 0;
                 
@@ -697,6 +737,10 @@ public class Main {
                         // River Mouth
                         case 4:
                             riverMouthSpawnWeight += w;
+                            break;
+                            
+                        case 5:
+                            oceanRainSpawnWeight += w;
                             break;
                         
                         // Ocean
@@ -739,6 +783,8 @@ public class Main {
                         case 6:
                             if(fsw.getAcreId() == 4){
                                 LLLRiverMouthSpawnWeight += w;
+                            } else if(fsw.getAcreId() == 5){
+                                LLLOceanRainSpawnWeight += w;
                             } else{
                                 LLLOceanSpawnWeight += w;
                             }
@@ -752,7 +798,7 @@ public class Main {
                 }
                 
                 // combine the spawn weights
-                totalOceanSpawnWeight = oceanSpawnWeight + riverMouthSpawnWeight;
+                totalOceanSpawnWeight = oceanSpawnWeight + riverMouthSpawnWeight + oceanRainSpawnWeight;
                 
                 // then, calculate the percentage for each individual fish
                 for(FishSpawnWeight fsw: weights){
@@ -797,7 +843,9 @@ public class Main {
                         case 6:
                             if(fsw.getAcreId() == 4){
                                 totalWeightToUse = LLLRiverMouthSpawnWeight + LLLOceanSpawnWeight;
-                            } else{
+                            } else if(fsw.getAcreId() == 5){
+                                totalWeightToUse = LLLOceanRainSpawnWeight + LLLOceanSpawnWeight;
+                            }else{
                                 totalWeightToUse = LLLOceanSpawnWeight;
                             }
                             break;
@@ -808,7 +856,9 @@ public class Main {
                             break;
                     }
                     
-                    sb.append("\t\t").append(String.format("%.1f", (100.0 * (fsw.getSpawnWeight() / totalWeightToUse))));
+                    double shadowBasedPercent = 100.0 * (fsw.getSpawnWeight() / totalWeightToUse);
+                    
+                    sb.append("\t\t").append(String.format("%.1f", shadowBasedPercent));
                             
                     if(fsw.getAcreId() == 4){
                         sb.append("\t").append(fishAcreIds[fsw.getAcreId()]);
@@ -816,11 +866,60 @@ public class Main {
                         sb.append("\t").append("Rain/Snow");
                     }
                     sb.append("\n");
+                    
+                    // add the fish spawn weight and shadow based % to the appropriate entry in the 2d arrays
+                    int colIndex = (monthId * 3) + timeOfDayId;
+                    
+                    fishSpawnWeightArray[fsw.getFishId()][colIndex] = 1.0*fsw.getSpawnWeight();
+                    fishShadowBasedArray[fsw.getFishId()][colIndex] = shadowBasedPercent;
                 }
             }
         }
         
         return sb.toString();
+    }
+    
+    private static void writeFishToCsv(){
+        
+        // Regular percentages
+        try (PrintWriter pw = new PrintWriter(fishPercentagesCsv)) {
+            for(int fishIndex = 0; fishIndex < fishSpawnWeightArray.length; fishIndex++){
+                String csvLine = getCsvLineFromDoubles(fishSpawnWeightArray[fishIndex]);
+                pw.println(csvLine);
+            }
+        } catch(Exception ex){
+            System.out.println("Exception writing bug percentages to .csv");
+            ex.printStackTrace();
+        }
+        
+        // Shadow-based percentages
+        try (PrintWriter pw = new PrintWriter(fishShadowPercentagesCsv)) {
+            for(int fishIndex = 0; fishIndex < fishShadowBasedArray.length; fishIndex++){
+                String csvLine = getCsvLineFromDoubles(fishShadowBasedArray[fishIndex]);
+                pw.println(csvLine);
+            }
+        } catch(Exception ex){
+            System.out.println("Exception writing bug percentages to .csv");
+            ex.printStackTrace();
+        }
+    }
+    
+    private static void writeBugsToCsv(){
+        try (PrintWriter pw = new PrintWriter(bugPercentagesCsv)) {
+            for(int bugIndex = 0; bugIndex < bugBasePercentagesArray.length; bugIndex++){
+                String csvLine = getCsvLineFromDoubles(bugBasePercentagesArray[bugIndex]);
+                pw.println(csvLine);
+            }
+        } catch(Exception ex){
+            System.out.println("Exception writing bug percentages to .csv");
+            ex.printStackTrace();
+        }
+    }
+    
+    private static String getCsvLineFromDoubles(Double[] data){
+        return Stream.of(data)
+                .map(String::valueOf)
+                .collect(Collectors.joining(","));
     }
     
     static class MonthPair{
