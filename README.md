@@ -1,5 +1,5 @@
 # Animal-Crossing-City-Folk-spawn-data-parsing
-Some code I used to parse out Bug+ Fish spawn data
+Some code I used to parse out Bug + Fish spawn data
 
 Data spreadsheet here: https://docs.google.com/spreadsheets/d/1VR4OfkgbGsIR693iuSrRHdwJrZV_M_FKC4ydXmc6Xn8
 
